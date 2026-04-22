@@ -9,7 +9,7 @@
   width: 280px;
   background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
   color: white;
-  padding: 2rem 0;
+  padding: 2.1rem 0;
   position: fixed;
   height: 100vh;
   overflow-y: auto;
