@@ -1,4 +1,4 @@
-package com.example.banking;
+package com.example.banking.Model;
 
 import jakarta.persistence.*;
 import java.util.ArrayList;
@@ -23,26 +23,32 @@ public class BankAccount {
     }
 
     public long getAccountNumber() {
+
         return accountNumber;
     }
 
     public void setAccountNumber(long accountNumber) {
+
         this.accountNumber = accountNumber;
     }
 
     public String getAccountHolderName() {
+
         return accountHolderName;
     }
 
     public void setAccountHolderName(String accountHolderName) {
+
         this.accountHolderName = accountHolderName;
     }
 
     public double getBalance() {
+
         return balance;
     }
 
     public void setBalance(double balance) {
+
         this.balance = balance;
     }
 
@@ -51,6 +57,7 @@ public class BankAccount {
     }
 
     public void setTransactions(List<String> transactions) {
+
         this.transactions = transactions;
     }
 }
