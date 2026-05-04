@@ -165,6 +165,9 @@ const Transfer = () => {
               <p style={{ margin: '0', fontSize: '1.1rem', fontWeight: '600' }}>
                 {fromAccountDisplay}
               </p>
+              <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-light)', fontSize: '0.85rem' }}>
+                Holder: {response.accountHolderName}
+              </p>
             </div>
 
             <div style={{ 
@@ -195,6 +198,20 @@ const Transfer = () => {
               </p>
             </div>
 
+            <div style={{ 
+              padding: '1rem', 
+              backgroundColor: 'var(--border-light)', 
+              borderRadius: '8px',
+              borderLeft: '4px solid var(--info)'
+            }}>
+              <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-light)', fontSize: '0.9rem' }}>
+                New Balance (From Account)
+              </p>
+              <p style={{ margin: '0', fontSize: '1.3rem', fontWeight: '600' }}>
+                ₹{response.balance.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+              </p>
+            </div>
+
             {response.transactionId && (
               <div style={{ 
                 padding: '1rem', 
@@ -205,7 +222,7 @@ const Transfer = () => {
                 <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-light)', fontSize: '0.9rem' }}>
                   Transaction ID
                 </p>
-                <p style={{ margin: '0', fontSize: '0.95rem', fontWeight: '600' }}>
+                <p style={{ margin: '0', fontSize: '0.95rem', fontWeight: '600', wordBreak: 'break-all' }}>
                   {response.transactionId}
                 </p>
               </div>

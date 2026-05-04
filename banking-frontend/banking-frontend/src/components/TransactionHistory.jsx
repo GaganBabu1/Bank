@@ -13,10 +13,11 @@ const TransactionHistory = () => {
   };
 
   const parseTransaction = (txnString) => {
-    // Parse strings like "Deposited: 1000" or "Withdrawn: 500" or "Transferred: 200"
+    // Parse strings like "Deposited: 1000", "Withdrew: 500", "Transferred 200 to 102", "Received 200 from 101"
     const depositMatch = txnString.match(/Deposited:\s*([\d.]+)/);
-    const withdrawMatch = txnString.match(/Withdrawn:\s*([\d.]+)/);
-    const transferMatch = txnString.match(/Transferred:\s*([\d.]+)/);
+    const withdrawMatch = txnString.match(/Withdrew:\s*([\d.]+)/);
+    const transferMatch = txnString.match(/Transferred\s+([\d.]+)\s+to/);
+    const receivedMatch = txnString.match(/Received\s+([\d.]+)\s+from/);
 
     if (depositMatch) {
       return {
@@ -34,6 +35,12 @@ const TransactionHistory = () => {
       return {
         type: 'TRANSFER',
         amount: parseFloat(transferMatch[1]),
+        display: txnString
+      };
+    } else if (receivedMatch) {
+      return {
+        type: 'RECEIVED',
+        amount: parseFloat(receivedMatch[1]),
         display: txnString
       };
     }
@@ -149,15 +156,15 @@ const TransactionHistory = () => {
                           {txn.display}
                         </td>
                         <td>
-                          <span className={`badge badge-${txn.type === 'DEPOSIT' ? 'success' : txn.type === 'WITHDRAW' ? 'danger' : 'info'}`}>
+                          <span className={`badge badge-${txn.type === 'DEPOSIT' || txn.type === 'RECEIVED' ? 'success' : txn.type === 'WITHDRAW' ? 'danger' : 'info'}`}>
                             {txn.type}
                           </span>
                         </td>
                         <td style={{ fontWeight: '600' }}>
                           <span style={{
-                            color: txn.type === 'DEPOSIT' ? 'var(--success)' : 'var(--danger)'
+                            color: txn.type === 'DEPOSIT' || txn.type === 'RECEIVED' ? 'var(--success)' : 'var(--danger)'
                           }}>
-                            {txn.type === 'DEPOSIT' ? '+' : '-'}
+                            {txn.type === 'DEPOSIT' || txn.type === 'RECEIVED' ? '+' : '-'}
                             ₹{txn.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
                           </span>
                         </td>

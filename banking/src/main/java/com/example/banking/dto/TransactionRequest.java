@@ -1,28 +1,34 @@
-package com.example.banking;
+package com.example.banking.dto;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
+public class TransactionRequest
+{
 
-public class TransactionRequest  {
 
+    @NotNull(message = "Account number is required")
     private long accountNumber;
+
+    @Positive(message = "Amount must be greater than 0")
     private double amount;
 
-    public long getAccountNumber() {
+    public long getAccountNumber()
+    {
         return accountNumber;
     }
 
-    public void setAccountNumber(long accountNumber) {
+    public void setAccountNumber(long accountNumber)
+    {
         this.accountNumber = accountNumber;
     }
 
-    public double getAmount() {
+    public double getAmount()
+    {
         return amount;
     }
 
-    public void setAmount(double amount) {
+    public void setAmount(double amount)
+    {
         this.amount = amount;
     }
 

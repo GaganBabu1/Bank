@@ -126,6 +126,34 @@ const Withdraw = () => {
               padding: '1rem', 
               backgroundColor: 'var(--border-light)', 
               borderRadius: '8px',
+              borderLeft: '4px solid var(--primary)'
+            }}>
+              <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-light)', fontSize: '0.9rem' }}>
+                Account Number
+              </p>
+              <p style={{ margin: '0', fontSize: '1.3rem', fontWeight: '600' }}>
+                {response.accountNumber}
+              </p>
+            </div>
+
+            <div style={{ 
+              padding: '1rem', 
+              backgroundColor: 'var(--border-light)', 
+              borderRadius: '8px',
+              borderLeft: '4px solid var(--info)'
+            }}>
+              <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-light)', fontSize: '0.9rem' }}>
+                Account Holder
+              </p>
+              <p style={{ margin: '0', fontSize: '1.3rem', fontWeight: '600' }}>
+                {response.accountHolderName}
+              </p>
+            </div>
+
+            <div style={{ 
+              padding: '1rem', 
+              backgroundColor: 'var(--border-light)', 
+              borderRadius: '8px',
               borderLeft: '4px solid var(--danger)'
             }}>
               <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-light)', fontSize: '0.9rem' }}>
@@ -140,7 +168,7 @@ const Withdraw = () => {
               padding: '1rem', 
               backgroundColor: 'var(--border-light)', 
               borderRadius: '8px',
-              borderLeft: '4px solid var(--info)'
+              borderLeft: '4px solid var(--primary)'
             }}>
               <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-light)', fontSize: '0.9rem' }}>
                 Remaining Balance
