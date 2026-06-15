@@ -17,7 +17,7 @@ jobs:
           FORFORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         defaults:
           run:
-            working-directory: banking/banking-frontend/banking-frontend
+            working-directory: banking-frontend/banking-frontend
 
         steps:
           - name: Checkout
@@ -28,7 +28,7 @@ jobs:
             with:
               node-version: 20
               cache: npm
-              cache-dependency-path: '**/package-lock.json'
+              cache-dependency-path: banking-frontend/banking-frontend/package-lock.json
 
 
           - name: Install dependencies
