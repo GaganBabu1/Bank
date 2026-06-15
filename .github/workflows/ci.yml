@@ -1,0 +1,39 @@
+name : Banking-App
+
+on:
+  push:
+    branches: [ frontend ]
+  pull_request:
+    branches: [main]
+
+    jobs:
+
+      # Frontend
+
+      frontend:
+        name: Frontend(test+build)
+        runs-on: ubuntu-latest
+        defaults:
+          run:
+            working-directory: banking/banking-frontend/banking-frontend
+
+        steps:
+          - name: Checkout
+            uses: actions/checkout@v4
+
+          - name: Setup Node
+            uses: actions/setup-node@v4
+            with:
+              node-version: 20
+              cache: npm
+              cache-dependency-path: banking/banking-frontend/banking-frontend/package-lock.json
+
+
+          - name: Install dependencies
+            run: npm ci
+
+          - name: Run tests
+            run: npm run test:run
+
+          - name: Build
+            run: npm run build
