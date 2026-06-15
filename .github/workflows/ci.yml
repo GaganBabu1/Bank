@@ -13,6 +13,8 @@ jobs:
       frontend:
         name: Frontend(test+build)
         runs-on: ubuntu-latest
+        env:
+          FORFORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         defaults:
           run:
             working-directory: banking/banking-frontend/banking-frontend
