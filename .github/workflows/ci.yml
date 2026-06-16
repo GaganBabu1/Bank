@@ -2,7 +2,7 @@ name : Banking-App
 
 on:
   push:
-    branches: [ frontend ]
+    branches: [ frontend, backend ]
   pull_request:
     branches: [main]
 
