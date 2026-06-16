@@ -56,41 +56,41 @@ public class JwtTokenProvider {
     }
 
     public String getEmailFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(key())
+        Claims claims = Jwts.parser()
+                .verifyWith(key())
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload(); 
 
         return claims.getSubject();
     }
 
     public Long getUserIdFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(key())
+        Claims claims = Jwts.parser()
+                .verifyWith(key())
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
 
         return claims.get("userId", Long.class);
     }
 
     public String getRoleFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(key())
+        Claims claims = Jwts.parser()
+                .verifyWith(key())
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
 
         return claims.get("role", String.class);
     }
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(key())
+            Jwts.parser()
+                    .verifyWith(key())
                     .build()
-                    .parseClaimsJws(token);
+                    .parseSignedClaims(token);
             return true;
         } catch (MalformedJwtException ex) {
             System.err.println("Invalid JWT token: {}" + ex.getMessage());
