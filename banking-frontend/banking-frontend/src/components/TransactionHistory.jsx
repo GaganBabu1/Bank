@@ -1,98 +1,224 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { accountAPI, transactionAPI } from '../services/api';
+import Loader from './Loader';
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20];
+const SCOPE_OPTIONS = [
+  { value: 'all', label: 'All' },
+  { value: 'incoming', label: 'Incoming' },
+  { value: 'outgoing', label: 'Outgoing' }
+];
+const TYPE_OPTIONS = [
+  { value: 'all', label: 'All types' },
+  { value: 'DEPOSIT', label: 'Deposit' },
+  { value: 'WITHDRAW', label: 'Withdraw' },
+  { value: 'TRANSFER_OUT', label: 'Transfer Out' },
+  { value: 'TRANSFER_IN', label: 'Transfer In' }
+];
 
 const TransactionHistory = () => {
-  const [accountNumber, setAccountNumber] = useState('');
-  const [transactions, setTransactions] = useState([]);
-  const [account, setAccount] = useState(null);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [accounts, setAccounts] = useState([]);
+  const [selectedAccount, setSelectedAccount] = useState('');
+  const [scope, setScope] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(10);
+  const [pageData, setPageData] = useState({
+    content: [],
+    totalPages: 0,
+    totalElements: 0,
+    number: 0,
+    size: 10,
+    first: true,
+    last: true
+  });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [searched, setSearched] = useState(false);
+  const [accountsLoading, setAccountsLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const handleChange = (e) => {
-    setAccountNumber(e.target.value);
-  };
+  const currentAccount = useMemo(
+    () => accounts.find(account => String(account.accountNumber) === String(selectedAccount)),
+    [accounts, selectedAccount]
+  );
 
-  const parseTransaction = (txnString) => {
-    // Parse strings like "Deposited: 1000", "Withdrew: 500", "Transferred 200 to 102", "Received 200 from 101"
-    const depositMatch = txnString.match(/Deposited:\s*([\d.]+)/);
-    const withdrawMatch = txnString.match(/Withdrew:\s*([\d.]+)/);
-    const transferMatch = txnString.match(/Transferred\s+([\d.]+)\s+to/);
-    const receivedMatch = txnString.match(/Received\s+([\d.]+)\s+from/);
-
-    if (depositMatch) {
-      return {
-        type: 'DEPOSIT',
-        amount: parseFloat(depositMatch[1]),
-        display: txnString
-      };
-    } else if (withdrawMatch) {
-      return {
-        type: 'WITHDRAW',
-        amount: parseFloat(withdrawMatch[1]),
-        display: txnString
-      };
-    } else if (transferMatch) {
-      return {
-        type: 'TRANSFER',
-        amount: parseFloat(transferMatch[1]),
-        display: txnString
-      };
-    } else if (receivedMatch) {
-      return {
-        type: 'RECEIVED',
-        amount: parseFloat(receivedMatch[1]),
-        display: txnString
-      };
-    }
-    return {
-      type: 'UNKNOWN',
-      amount: 0,
-      display: txnString
-    };
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setSearched(true);
-
-    if (!accountNumber.trim()) {
-      setError('Please enter account number');
-      setLoading(false);
+  const fetchTransactions = async () => {
+    if (!selectedAccount) {
+      setPageData({
+        content: [],
+        totalPages: 0,
+        totalElements: 0,
+        number: 0,
+        size,
+        first: true,
+        last: true
+      });
       return;
     }
 
     try {
-      const res = await fetch(
-        `http://localhost:8080/accounts/${accountNumber}`
-      );
+      setLoading(true);
+      setError('');
 
-      if (!res.ok) {
-        throw new Error('Account not found');
+      let result;
+      if (scope === 'incoming') {
+        result = await transactionAPI.getIncomingTransactions(selectedAccount, page, size);
+      } else if (scope === 'outgoing') {
+        result = await transactionAPI.getOutgoingTransactions(selectedAccount, page, size);
+      } else {
+        result = await transactionAPI.getTransactions(selectedAccount, page, size);
       }
 
-      const accountData = await res.json();
-      setAccount(accountData);
-      
-      // Parse the transaction strings
-      const parsedTxns = (accountData.transactions || []).map((txn) => parseTransaction(txn));
-      setTransactions(parsedTxns);
+      setPageData(result.data);
     } catch (err) {
-      setError(err.message || 'An error occurred');
-      setTransactions([]);
-      setAccount(null);
+      setError(err.response?.data?.message || 'Failed to load transaction history');
+      setPageData({
+        content: [],
+        totalPages: 0,
+        totalElements: 0,
+        number: 0,
+        size,
+        first: true,
+        last: true
+      });
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    const loadAccounts = async () => {
+      if (!user?.id) {
+        setAccountsLoading(false);
+        return;
+      }
+
+      try {
+        const result = await accountAPI.getUserAccounts(user.id);
+        const userAccounts = Array.isArray(result.data) ? result.data : [];
+        setAccounts(userAccounts);
+        if (userAccounts.length > 0) {
+          setSelectedAccount(String(userAccounts[0].accountNumber));
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to load your accounts');
+      } finally {
+        setAccountsLoading(false);
+      }
+    };
+
+    loadAccounts();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const loadTransactions = async () => {
+      if (!selectedAccount) {
+        setPageData({
+          content: [],
+          totalPages: 0,
+          totalElements: 0,
+          number: 0,
+          size,
+          first: true,
+          last: true
+        });
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError('');
+
+        let result;
+        if (scope === 'incoming') {
+          result = await transactionAPI.getIncomingTransactions(selectedAccount, page, size);
+        } else if (scope === 'outgoing') {
+          result = await transactionAPI.getOutgoingTransactions(selectedAccount, page, size);
+        } else {
+          result = await transactionAPI.getTransactions(selectedAccount, page, size);
+        }
+
+        setPageData(result.data);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to load transaction history');
+        setPageData({
+          content: [],
+          totalPages: 0,
+          totalElements: 0,
+          number: 0,
+          size,
+          first: true,
+          last: true
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTransactions();
+  }, [selectedAccount, scope, page, size]);
+
+  const handleAccountChange = (event) => {
+    setSelectedAccount(event.target.value);
+    setPage(0);
+  };
+
+  const handleScopeChange = (event) => {
+    setScope(event.target.value);
+    setPage(0);
+  };
+
+  const filteredTransactions = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    return (pageData.content || []).filter(transaction => {
+      if (typeFilter !== 'all' && transaction.type !== typeFilter) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      const searchableValues = [
+        transaction.transactionRef,
+        transaction.description,
+        transaction.type,
+        transaction.status,
+        transaction.fromAccountNumber,
+        transaction.toAccountNumber
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return searchableValues.includes(query);
+    });
+  }, [pageData.content, searchTerm, typeFilter]);
+
+  const resetFilters = () => {
+    setScope('all');
+    setTypeFilter('all');
+    setSearchTerm('');
+    setPage(0);
+    if (accounts.length > 0) {
+      setSelectedAccount(String(accounts[0].accountNumber));
+    }
+  };
+
+  const canGoBack = pageData.number > 0;
+  const canGoForward = !pageData.last && pageData.totalPages > 0;
+
   return (
     <div className="fade-in">
-      <div className="card">
+      <div className="card" style={{ maxWidth: '1100px', margin: '0 auto' }}>
         <div className="card-header">
           <h2>Transaction History</h2>
-          <p>View all transactions for your account</p>
+          <p>Paginated transaction history with account, scope, type, and search filters</p>
         </div>
 
         {error && (
@@ -102,143 +228,199 @@ const TransactionHistory = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-              <label htmlFor="accountNumber">Account Number *</label>
-              <input
-                type="number"
-                id="accountNumber"
-                placeholder="Enter account number to view transactions"
-                value={accountNumber}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <button 
-              type="submit" 
-              className="btn btn-primary" 
-              disabled={loading}
-              style={{ alignSelf: 'flex-end', marginBottom: 0 }}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.25rem' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label htmlFor="account">Account *</label>
+            <select
+              id="account"
+              value={selectedAccount}
+              onChange={handleAccountChange}
+              disabled={accountsLoading || accounts.length === 0}
             >
-              {loading ? 'Loading...' : 'Search'}
-            </button>
+              <option value="">Choose an account</option>
+              {accounts.map(account => (
+                <option key={account.accountNumber} value={account.accountNumber}>
+                  #{account.accountNumber} - {account.accountHolderName}
+                </option>
+              ))}
+            </select>
           </div>
-        </form>
-      </div>
 
-      {searched && (
-        <div className="card fade-in">
-          {transactions.length > 0 ? (
-            <>
-              <div className="card-header">
-                <h3 style={{ margin: 0 }}>
-                  {transactions.length} Transaction{transactions.length !== 1 ? 's' : ''} Found
-                </h3>
-                <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-light)' }}>
-                  Account: {account?.accountNumber} | Holder: {account?.accountHolderName}
-                </p>
-              </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label htmlFor="scope">Transaction Scope</label>
+            <select id="scope" value={scope} onChange={handleScopeChange} disabled={loading || !selectedAccount}>
+              {SCOPE_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
-              <div style={{ overflowX: 'auto' }}>
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Transaction</th>
-                      <th>Type</th>
-                      <th>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions.map((txn, index) => (
-                      <tr key={index}>
-                        <td style={{ fontSize: '0.9rem' }}>
-                          {txn.display}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label htmlFor="typeFilter">Transaction Type</label>
+            <select id="typeFilter" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} disabled={loading || !selectedAccount}>
+              {TYPE_OPTIONS.map(option => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label htmlFor="searchTerm">Search</label>
+            <input
+              type="text"
+              id="searchTerm"
+              placeholder="Ref, description, type..."
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              disabled={loading || !selectedAccount}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+          <button className="btn btn-secondary" type="button" onClick={fetchTransactions} disabled={loading || !selectedAccount}>
+            {loading ? 'Loading...' : 'Refresh'}
+          </button>
+          <button className="btn" type="button" onClick={resetFilters} disabled={loading || accounts.length === 0} style={{ background: 'var(--border)', color: 'var(--text-dark)' }}>
+            Reset Filters
+          </button>
+          <button className="btn" type="button" onClick={() => navigate('/')} style={{ background: 'var(--border)', color: 'var(--text-dark)' }}>
+            Back to Dashboard
+          </button>
+        </div>
+
+        {currentAccount && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+            <div className="stat-card">
+              <h3>Account Holder</h3>
+              <p className="value" style={{ fontSize: '1.2rem' }}>{currentAccount.accountHolderName}</p>
+              <p>#{currentAccount.accountNumber}</p>
+            </div>
+            <div className="stat-card">
+              <h3>Balance</h3>
+              <p className="value">₹{Number(currentAccount.balance || 0).toLocaleString()}</p>
+              <p>Current available balance</p>
+            </div>
+            <div className="stat-card">
+              <h3>Daily Limit Used</h3>
+              <p className="value">₹{Number(currentAccount.dailyTransferUsed || 0).toLocaleString()}</p>
+              <p>of ₹{Number(currentAccount.dailyTransferLimit || 0).toLocaleString()}</p>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <Loader message="Loading transaction history..." />
+        ) : filteredTransactions.length > 0 ? (
+          <>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Ref</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>From</th>
+                    <th>To</th>
+                    <th>Amount</th>
+                    <th>Balance After</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTransactions.map((transaction) => {
+                    const incoming = transaction.type === 'DEPOSIT' || transaction.type === 'TRANSFER_IN';
+                    const badgeClass = transaction.status === 'SUCCESS'
+                      ? 'success'
+                      : transaction.status === 'FAILED'
+                        ? 'danger'
+                        : 'info';
+
+                    return (
+                      <tr key={transaction.transactionRef || transaction.id}>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          {transaction.createdAt ? new Date(transaction.createdAt).toLocaleString() : '—'}
+                        </td>
+                        <td style={{ fontSize: '0.85rem', wordBreak: 'break-all' }}>
+                          {transaction.transactionRef || '—'}
                         </td>
                         <td>
-                          <span className={`badge badge-${txn.type === 'DEPOSIT' || txn.type === 'RECEIVED' ? 'success' : txn.type === 'WITHDRAW' ? 'danger' : 'info'}`}>
-                            {txn.type}
+                          <span className={`badge badge-${incoming ? 'success' : transaction.type === 'WITHDRAW' ? 'danger' : 'info'}`}>
+                            {transaction.type || 'UNKNOWN'}
                           </span>
                         </td>
-                        <td style={{ fontWeight: '600' }}>
-                          <span style={{
-                            color: txn.type === 'DEPOSIT' || txn.type === 'RECEIVED' ? 'var(--success)' : 'var(--danger)'
-                          }}>
-                            {txn.type === 'DEPOSIT' || txn.type === 'RECEIVED' ? '+' : '-'}
-                            ₹{txn.amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                        <td>
+                          <span className={`badge badge-${badgeClass}`}>
+                            {transaction.status || 'UNKNOWN'}
                           </span>
+                        </td>
+                        <td>{transaction.fromAccountNumber || '—'}</td>
+                        <td>{transaction.toAccountNumber || '—'}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          <span style={{ color: incoming ? 'var(--success)' : 'var(--danger)' }}>
+                            {incoming ? '+' : '-'}₹{Number(transaction.amount || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+                          </span>
+                        </td>
+                        <td>
+                          {transaction.balanceAfter !== undefined && transaction.balanceAfter !== null
+                            ? `₹${Number(transaction.balanceAfter).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`
+                            : '—'}
                         </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div style={{ 
-                marginTop: '1.5rem', 
-                padding: '1rem', 
-                backgroundColor: 'var(--border-light)', 
-                borderRadius: '8px',
-                textAlign: 'center'
-              }}>
-                <p style={{ margin: '0.5rem 0', color: 'var(--text-light)', fontSize: '0.9rem' }}>
-                  Total Transactions
-                </p>
-                <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600' }}>
-                  {transactions.length}
-                </p>
-              </div>
-
-              <div style={{ 
-                marginTop: '1rem', 
-                padding: '1rem', 
-                backgroundColor: 'var(--border-light)', 
-                borderRadius: '8px',
-                textAlign: 'center'
-              }}>
-                <p style={{ margin: '0.5rem 0', color: 'var(--text-light)', fontSize: '0.9rem' }}>
-                  Current Balance
-                </p>
-                <p style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600', color: 'var(--primary)' }}>
-                  ₹{account?.balance.toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-                </p>
-              </div>
-            </>
-          ) : (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>
-              <p style={{ fontSize: '3rem', margin: '1rem 0' }}>📭</p>
-              <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text)' }}>
-                No Transactions Found
-              </h3>
-              <p style={{ color: 'var(--text-light)', margin: '0' }}>
-                This account has no transaction history yet.
-              </p>
-              {error && (
-                <div style={{ marginTop: '1.5rem', padding: '1rem', backgroundColor: 'var(--border-light)', borderRadius: '8px', textAlign: 'left' }}>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-light)', margin: '0 0 0.5rem 0' }}>
-                    Debug Info:
-                  </p>
-                  <pre style={{ fontSize: '0.75rem', overflow: 'auto', margin: 0, color: 'var(--danger)' }}>
-                    {error}
-                  </pre>
-                </div>
-              )}
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
-        </div>
-      )}
 
-      {!searched && (
-        <div className="card" style={{ textAlign: 'center', padding: '3rem 2rem' }}>
-          <p style={{ fontSize: '2.5rem', margin: '1rem 0' }}>📊</p>
-          <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text)' }}>
-            Enter an account number to view transactions
-          </h3>
-          <p style={{ color: 'var(--text-light)', margin: '0' }}>
-            Use the search form above to get started
-          </p>
-        </div>
-      )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+              <div style={{ color: 'var(--text-light)' }}>
+                Showing {filteredTransactions.length} transaction{filteredTransactions.length === 1 ? '' : 's'} on page {pageData.number + 1} of {pageData.totalPages || 1}
+                {' '}| Total matching records: {pageData.totalElements}
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-light)' }}>
+                  Page size
+                  <select value={size} onChange={(event) => { setSize(Number(event.target.value)); setPage(0); }} disabled={loading} style={{ width: 'auto' }}>
+                    {PAGE_SIZE_OPTIONS.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <button className="btn" type="button" onClick={() => setPage(0)} disabled={!canGoBack || loading} style={{ background: 'var(--border)', color: 'var(--text-dark)' }}>
+                  First
+                </button>
+                <button className="btn" type="button" onClick={() => setPage(prev => Math.max(prev - 1, 0))} disabled={!canGoBack || loading} style={{ background: 'var(--border)', color: 'var(--text-dark)' }}>
+                  Previous
+                </button>
+                <button className="btn" type="button" onClick={() => setPage(prev => prev + 1)} disabled={!canGoForward || loading} style={{ background: 'var(--border)', color: 'var(--text-dark)' }}>
+                  Next
+                </button>
+                <button className="btn" type="button" onClick={() => setPage(Math.max((pageData.totalPages || 1) - 1, 0))} disabled={!canGoForward || loading} style={{ background: 'var(--border)', color: 'var(--text-dark)' }}>
+                  Last
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '3rem 2rem' }}>
+            <p style={{ fontSize: '3rem', margin: '1rem 0' }}>📭</p>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text)' }}>No Transactions Found</h3>
+            <p style={{ color: 'var(--text-light)', margin: '0' }}>
+              {selectedAccount ? 'Try changing the filters or selecting a different account.' : 'Select an account to view its transaction history.'}
+            </p>
+            {accountsLoading && (
+              <p style={{ marginTop: '1rem', color: 'var(--text-light)' }}>Loading accounts...</p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

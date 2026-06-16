@@ -2,8 +2,8 @@ package com.example.banking.exception;
 
 public class InvalidAmountException extends RuntimeException
 {
-    public InvalidAmountException()
+    public InvalidAmountException(String message)
     {
-        super("Amount must be greater than 0");
+        super(message);
     }
 }

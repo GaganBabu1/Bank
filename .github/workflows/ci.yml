@@ -1,0 +1,69 @@
+name : Banking-App
+
+on:
+  push:
+    branches: [ frontend, backend ]
+  pull_request:
+    branches: [main]
+
+jobs:
+
+
+      # Backend
+
+      backend:
+        name: Backend(test+build)
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+              working-directory: banking
+
+        steps:
+          - name: Checkout
+            uses: actions/checkout@v4
+
+          - name: Setup JDK 21
+            uses: actions/setup-java@v4
+            with:
+              java-version: 21
+              distribution: temurin
+              cache: maven
+
+          
+          
+          - name: Build and run tests
+            run: |
+              chmod +x ./mvnw
+              ./mvnw -B -DskipTests=false test
+
+
+          
+
+      # Frontend
+
+      frontend:
+        name: Frontend(test+build)
+        runs-on: ubuntu-latest
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+        defaults:
+          run:
+            working-directory: banking-frontend/banking-frontend
+
+        steps:
+          - name: Checkout
+            uses: actions/checkout@v4
+
+          - name: Setup Node
+            uses: actions/setup-node@v4
+            with:
+              node-version: 20
+              cache: npm
+              cache-dependency-path: banking-frontend/banking-frontend/package-lock.json
+
+
+          - name: Install dependencies
+            run: npm install
+
+          - name: Build
+            run: npm run build
