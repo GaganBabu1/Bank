@@ -1,74 +1,169 @@
 package com.example.banking.entity;
 
 import jakarta.persistence.*;
-import java.util.ArrayList;
+import java.time.LocalDateTime;
 import java.util.List;
+
 @Entity
-@Table(name = "bank_account")
-public class BankAccount
-{
+@Table(name = "bank_account", indexes = {
+        @Index(name = "idx_user_id", columnList = "user_id"),
+        @Index(name = "idx_account_status", columnList = "account_status")
+})
+public class BankAccount {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private long accountNumber;
+    private Long accountNumber;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(nullable = false)
     private String accountHolderName;
-    private double balance;
 
-    @ElementCollection
-    @CollectionTable(name = "transactions", joinColumns = @JoinColumn(name = "account_number"))
-    @Column(name = "transaction")
-    private List<String> transactions = new ArrayList<>();
+    @Column(nullable = false)
+    private Double balance = 0.0;
 
-    public BankAccount()
-    {
+    @Column(nullable = false)
+    private Double dailyTransferLimit = 100000.0;
 
+    @Column(nullable = false)
+    private Double dailyTransferUsed = 0.0;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private AccountStatus accountStatus = AccountStatus.ACTIVE;
+
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+    private LocalDateTime freezeDate;
+
+    @Column(length = 500)
+    private String freezeReason;
+
+    @OneToMany(mappedBy = "fromAccount", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<Transaction> sentTransactions;
+
+    @OneToMany(mappedBy = "toAccount", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    private List<Transaction> receivedTransactions;
+
+    public BankAccount() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+        this.dailyTransferUsed = 0.0;
     }
 
-    public long getAccountNumber()
-    {
-
+    // Getters and Setters
+    public Long getAccountNumber() {
         return accountNumber;
     }
 
-    public void setAccountNumber(long accountNumber)
-    {
-
+    public void setAccountNumber(Long accountNumber) {
         this.accountNumber = accountNumber;
     }
 
-    public String getAccountHolderName()
-    {
+    public User getUser() {
+        return user;
+    }
 
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public String getAccountHolderName() {
         return accountHolderName;
     }
 
-    public void setAccountHolderName(String accountHolderName)
-    {
-
+    public void setAccountHolderName(String accountHolderName) {
         this.accountHolderName = accountHolderName;
     }
 
-    public double getBalance()
-    {
-
+    public Double getBalance() {
         return balance;
     }
 
-    public void setBalance(double balance)
-    {
-
+    public void setBalance(Double balance) {
         this.balance = balance;
     }
 
-    public List<String> getTransactions()
-    {
-        return transactions;
+    public Double getDailyTransferLimit() {
+        return dailyTransferLimit;
     }
 
-    public void setTransactions(List<String> transactions)
-    {
+    public void setDailyTransferLimit(Double dailyTransferLimit) {
+        this.dailyTransferLimit = dailyTransferLimit;
+    }
 
-        this.transactions = transactions;
+    public Double getDailyTransferUsed() {
+        return dailyTransferUsed;
+    }
+
+    public void setDailyTransferUsed(Double dailyTransferUsed) {
+        this.dailyTransferUsed = dailyTransferUsed;
+    }
+
+    public AccountStatus getAccountStatus() {
+        return accountStatus;
+    }
+
+    public void setAccountStatus(AccountStatus accountStatus) {
+        this.accountStatus = accountStatus;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public LocalDateTime getFreezeDate() {
+        return freezeDate;
+    }
+
+    public void setFreezeDate(LocalDateTime freezeDate) {
+        this.freezeDate = freezeDate;
+    }
+
+    public String getFreezeReason() {
+        return freezeReason;
+    }
+
+    public void setFreezeReason(String freezeReason) {
+        this.freezeReason = freezeReason;
+    }
+
+    public List<Transaction> getSentTransactions() {
+        return sentTransactions;
+    }
+
+    public void setSentTransactions(List<Transaction> sentTransactions) {
+        this.sentTransactions = sentTransactions;
+    }
+
+    public List<Transaction> getReceivedTransactions() {
+        return receivedTransactions;
+    }
+
+    public void setReceivedTransactions(List<Transaction> receivedTransactions) {
+        this.receivedTransactions = receivedTransactions;
+    }
+
+    public enum AccountStatus {
+        ACTIVE, FROZEN, CLOSED
     }
 }
