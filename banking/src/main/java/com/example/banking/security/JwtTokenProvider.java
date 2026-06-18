@@ -12,7 +12,7 @@ import java.util.Date;
 @Component
 public class JwtTokenProvider {
 
-    @Value("${app.jwtSecret:mySecretKeyForBankingApplicationThatIsAtLeast256BitsLongForHS256Algorithm}")
+    @Value("${app.jwtSecret}")
     private String jwtSecret;
 
     @Value("${app.jwtAccessTokenExpiration:900000}")
