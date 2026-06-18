@@ -86,21 +86,17 @@ public class JwtTokenProvider {
     }
 
     public boolean validateToken(String token) {
-        try {
-            Jwts.parser()
-                    .verifyWith(key())
-                    .build()
-                    .parseSignedClaims(token);
-            return true;
-        } catch (MalformedJwtException ex) {
-            System.err.println("Invalid JWT token: {}" + ex.getMessage());
-        } catch (ExpiredJwtException ex) {
-            System.err.println("Expired JWT token: {}" + ex.getMessage());
-        } catch (UnsupportedJwtException ex) {
-            System.err.println("Unsupported JWT token: {}" + ex.getMessage());
-        } catch (IllegalArgumentException ex) {
-            System.err.println("JWT claims string is empty: {}" + ex.getMessage());
-        }
-        return false;
+    try {
+        Jwts.parser()
+                .verifyWith(key())
+                .build()
+                .parseSignedClaims(token);
+        return true;
+    } catch (JwtException ex) {
+        System.err.println("Invalid JWT token: " + ex.getMessage());
+    } catch (IllegalArgumentException ex) {
+        System.err.println("JWT claims string is empty: " + ex.getMessage());
     }
+    return false;
+  }    
 }
