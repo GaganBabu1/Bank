@@ -111,6 +111,21 @@ export const transactionAPI = {
     api.get(`/accounts/transaction/${transactionRef}`),
 };
 
+// Insight API calls
+const MOCK_MONEY_HEALTH = Object.freeze({
+  score: 78,
+  status: 'HEALTHY',
+  reasons: [
+    'Spending is stable',
+    'Withdrawals increased recently',
+  ],
+});
+
+export const insightAPI = {
+  getMyFinancialHealth: () => api.get('/insights/my-financial-health'),
+  getMockMyFinancialHealth: () => Promise.resolve({ data: MOCK_MONEY_HEALTH }),
+};
+
 // Admin API calls
 export const adminAPI = {
   getAllUsers: () => api.get('/admin/users'),
