@@ -145,6 +145,23 @@ The seeder performs one additional account lookup on startup when the profile is
 Impact:
 The mock fixture can now recover from a user-only partial seed without creating duplicate accounts or transactions. Focused seeder tests pass.
 
+## 2026-09-16 - Isolate test JWT configuration from CI environment values
+
+Decision:
+Define the JWT secret and token expiration values explicitly in `application-test.properties`.
+
+Reason:
+CI context loading reported `JwtTokenProvider` autowiring failures, while local tests passed with property defaults. Explicit test values prevent blank or invalid CI environment overrides from breaking bean injection.
+
+Pattern:
+Keep test-only security configuration in the test profile and leave production secrets supplied by environment variables or production configuration.
+
+Tradeoff:
+The test profile uses a known non-production secret. This was accepted because it is isolated to H2-backed tests and must never be used for real deployments.
+
+Impact:
+The clean backend suite passes all 13 tests, including application context loading, login, insight scoring, security, and mock-data tests.
+
 ## 2026-09-16 - Wire login authentication to persisted users
 
 Decision:
