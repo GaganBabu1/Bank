@@ -1,6 +1,7 @@
 package com.example.banking;
 
 import com.example.banking.dto.MoneyHealthResponse;
+import com.example.banking.dto.LowBalancePredictionResponse;
 import com.example.banking.entity.BankAccount;
 import com.example.banking.entity.Transaction;
 import com.example.banking.repository.BankAccountRepository;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
@@ -32,6 +34,50 @@ class AiInsightServiceTests {
 
     @InjectMocks
     private AiInsightService aiInsightService;
+
+    @Test
+    void predictsLowBalanceFromLiveOutgoingHistory() {
+        BankAccount account = account(30L, 10000.0, 100000.0, 0.0);
+        Transaction withdrawal = transaction(9L, Transaction.TransactionType.WITHDRAW, 1000.0);
+        withdrawal.setCreatedAt(LocalDateTime.now().minusDays(10));
+        when(accountRepository.findByUserId(45L)).thenReturn(List.of(account));
+        when(transactionRepository.findTransactionsByAccount(30L, Pageable.unpaged()))
+                .thenReturn(new PageImpl<>(List.of(withdrawal)));
+
+        LowBalancePredictionResponse result = aiInsightService.getLowBalancePrediction(45L);
+
+        assertThat(result.warning()).isTrue();
+        assertThat(result.estimatedDaysUntilThreshold()).isBetween(79, 81);
+        assertThat(result.currentBalance()).isEqualTo(10000.0);
+        assertThat(result.projectedBalance()).isLessThanOrEqualTo(2000.0);
+        assertThat(result.threshold()).isEqualTo(2000.0);
+        assertThat(result.reasons()).hasSize(2);
+    }
+
+    @Test
+    void warnsImmediatelyWhenBalanceIsAlreadyBelowThreshold() {
+        BankAccount account = account(31L, 1500.0, 100000.0, 0.0);
+        when(accountRepository.findByUserId(46L)).thenReturn(List.of(account));
+
+        LowBalancePredictionResponse result = aiInsightService.getLowBalancePrediction(46L);
+
+        assertThat(result.warning()).isTrue();
+        assertThat(result.estimatedDaysUntilThreshold()).isZero();
+        assertThat(result.projectedBalance()).isEqualTo(1500.0);
+        verifyNoInteractions(transactionRepository);
+    }
+
+    @Test
+    void returnsNoHistoryPredictionWhenUserHasNoAccounts() {
+        when(accountRepository.findByUserId(47L)).thenReturn(List.of());
+
+        LowBalancePredictionResponse result = aiInsightService.getLowBalancePrediction(47L);
+
+        assertThat(result.warning()).isFalse();
+        assertThat(result.estimatedDaysUntilThreshold()).isZero();
+        assertThat(result.message()).contains("not enough outgoing history");
+        verifyNoInteractions(transactionRepository);
+    }
 
     @Test
     void calculatesHealthyScoreFromLiveAccountAndTransactionData() {
