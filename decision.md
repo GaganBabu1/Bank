@@ -247,6 +247,40 @@ The Dashboard now depends on the backend and database being available. This was 
 Impact:
 The user Dashboard displays the authenticated user's live Money Health Score. The mock method remains available for isolated frontend testing but is no longer used by the production Dashboard.
 
+## 2026-09-18 - Start low-balance warning with a backend mock
+
+Decision:
+Implement `GET /api/insights/low-balance-prediction` with a fixed, read-only response before connecting live transaction data.
+
+Reason:
+This validates the response contract and security boundary without making an untested prediction from financial records.
+
+Pattern:
+Keep the response as a DTO, expose it through the existing `InsightController`, and keep the mock provider in `AiInsightService`.
+
+Tradeoff:
+The prediction is not personalized yet. This was accepted because live prediction rules must be tested separately after the mock contract is stable.
+
+Impact:
+The endpoint returns a warning for a projected balance of `1,800`, a `2,000` threshold, and an estimated six-day window. Four service tests and eight insight security tests pass.
+
+## 2026-09-18 - Connect low-balance warning to live user data
+
+Decision:
+Replace the fixed low-balance response with a read-only prediction calculated from the authenticated user's active accounts and outgoing transactions.
+
+Reason:
+The mock response contract and security boundary passed, so the next planned step was to validate the prediction against the existing financial data path.
+
+Pattern:
+Use the JWT user ID in `InsightController`, reuse `BankAccountRepository` and `TransactionRepository`, and calculate the projection inside `AiInsightService`.
+
+Tradeoff:
+The first live version uses a simple average daily outgoing rate and a fixed `2,000` threshold. This was accepted because the calculation is explainable, deterministic, and easy to test before adding more advanced forecasting.
+
+Impact:
+The endpoint now returns user-scoped live predictions, handles already-low balances and missing history safely, and never mutates financial data. Six service tests and eight insight security tests pass.
+
 ## 2026-09-16 - Add an opt-in mock banking user
 
 Decision:

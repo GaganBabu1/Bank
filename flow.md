@@ -352,6 +352,25 @@ Dashboard component
 
 The Dashboard now uses the live path above. The mock method remains in `services/api.js` only for repeatable frontend fallback testing and is not used by the production Dashboard.
 
+## Low-Balance Prediction Live Flow
+
+The low-balance feature now reads the authenticated user's active accounts and outgoing transactions. It remains read-only and does not change account data.
+
+```text
+Authenticated client
+  -> GET /api/insights/low-balance-prediction
+  -> SecurityConfig allows USER or ADMIN
+  -> JwtAuthenticationFilter validates the bearer token
+  -> InsightController.getLowBalancePrediction(authentication)
+  -> AiInsightService.getLowBalancePrediction(userId)
+  -> BankAccountRepository.findByUserId(userId)
+  -> TransactionRepository.findTransactionsByAccount(accountNumber, Pageable.unpaged()) for each active account
+  -> calculate average daily outgoing rate and estimated days to threshold
+  -> LowBalancePredictionResponse
+```
+
+The live prediction uses a fixed `2,000` safety threshold, outgoing withdrawals and transfers, and the observed transaction period. It safely returns no-history output when there are no active accounts or outgoing transactions.
+
 Current AI/ML status:
 
 - No AI/ML dependency or external model exists in `banking/pom.xml`.
@@ -361,6 +380,7 @@ Current AI/ML status:
 - The frontend calls the endpoint through `insightAPI` and isolates insight failures from account loading.
 - Authentication and authorization tests cover `USER`, `ADMIN`, unauthenticated, and disallowed-role requests.
 - Service tests cover healthy scoring, at-risk scoring, and the no-history fallback.
+- The low-balance live endpoint is covered by projection, already-low-balance, no-history, and authentication tests.
 
 When the first AI/ML feature is implemented, record:
 

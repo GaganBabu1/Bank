@@ -39,6 +39,20 @@ class InsightControllerSecurityTests {
     }
 
     @Test
+    void authenticatedUserCanReadMockLowBalancePrediction() throws Exception {
+        mockMvc.perform(get("/api/insights/low-balance-prediction").with(user("user").roles("USER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.warning").value(false))
+                .andExpect(jsonPath("$.estimatedDaysUntilThreshold").value(0));
+    }
+
+    @Test
+    void unauthenticatedLowBalancePredictionIsRejected() throws Exception {
+        mockMvc.perform(get("/api/insights/low-balance-prediction"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void validJwtAuthenticatesUserForMockMoneyHealth() throws Exception {
         String accessToken = jwtTokenProvider.generateAccessToken("user@example.com", "USER", 1L);
 

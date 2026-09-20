@@ -35,6 +35,7 @@ The Personal Money Health Score has passed mock-data validation and now reads li
 - Scoring tests: passed for healthy, at-risk, and no-history profiles
 - Frontend UI: implemented on the existing user Dashboard
 - Frontend live API wiring: active
+- Predictive Low-Balance Warning: backend live calculation implemented; frontend pending
 
 The score is intentionally rule-based and explainable. It does not block transactions, freeze accounts, or modify financial records.
 
@@ -59,6 +60,16 @@ Example result:
 The score should include the factors that contributed to it.
 
 ### 2. Predictive Low-Balance Warning
+
+Current backend status:
+
+- Endpoint: `GET /api/insights/low-balance-prediction`
+- Access: authenticated `USER` or `ADMIN`
+- Behavior: read-only calculated response
+- Prediction source: authenticated user's active accounts and outgoing transactions
+- Safety threshold: `2,000`
+- Service and security tests: passed
+- Frontend integration: pending
 
 Estimate whether the user's balance may become low soon, based on:
 
@@ -246,3 +257,4 @@ This file must be updated when a plan is selected, reordered, narrowed, expanded
 | 2026-09-16 | Connected the Money Health Score to authenticated user accounts and transactions | Live read-only implementation complete |
 | 2026-09-16 | Added the Money Health card using explicit frontend mock data | Mock UI complete; live UI switch pending |
 | 2026-09-16 | Switched the Dashboard from the mock method to the live insight API | Live frontend integration complete |
+| 2026-09-18 | Replaced the low-balance mock response with authenticated live account and transaction prediction | Backend live implementation complete; frontend pending |

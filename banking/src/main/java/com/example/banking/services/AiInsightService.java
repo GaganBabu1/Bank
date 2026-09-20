@@ -1,6 +1,7 @@
 package com.example.banking.services;
 
 import com.example.banking.dto.MoneyHealthResponse;
+import com.example.banking.dto.LowBalancePredictionResponse;
 import com.example.banking.entity.BankAccount;
 import com.example.banking.entity.Transaction;
 import com.example.banking.repository.BankAccountRepository;
@@ -13,6 +14,8 @@ import org.springframework.stereotype.Service;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Service
 public class AiInsightService {
@@ -22,6 +25,87 @@ public class AiInsightService {
 
     @Autowired
     private TransactionRepository transactionRepository;
+
+        public LowBalancePredictionResponse getLowBalancePrediction(Long userId) {
+        double threshold = 2000.0;
+            if (userId == null) {
+                return prediction(0.0, 0.0, 0, threshold, false,
+                        "There is not enough outgoing history to predict a low balance.",
+                        List.of("No authenticated account history was found"));
+            }
+
+            List<BankAccount> activeAccounts = accountRepository.findByUserId(userId).stream()
+            .filter(account -> account.getAccountStatus() == BankAccount.AccountStatus.ACTIVE)
+            .toList();
+        double currentBalance = activeAccounts.stream()
+            .mapToDouble(account -> valueOrZero(account.getBalance()))
+            .sum();
+
+            if (activeAccounts.isEmpty()) {
+                return prediction(0.0, 0.0, 0, threshold, false,
+                    "There is not enough outgoing history to predict a low balance.",
+                    List.of("No active account history was found"));
+            }
+
+            if (currentBalance <= threshold) {
+                return prediction(currentBalance, currentBalance, 0, threshold, true,
+                    "Your balance is already at or below the safety threshold.",
+                    List.of("Current balance is below the recommended safety threshold"));
+            }
+
+        Map<Long, Transaction> transactionsById = new LinkedHashMap<>();
+        for (BankAccount account : activeAccounts) {
+            transactionRepository.findTransactionsByAccount(account.getAccountNumber(), Pageable.unpaged())
+                .forEach(transaction -> transactionsById.put(transaction.getId(), transaction));
+        }
+
+        List<Transaction> outgoingTransactions = transactionsById.values().stream()
+            .filter(this::isOutgoing)
+            .toList();
+        double outgoingTotal = outgoingTransactions.stream()
+            .mapToDouble(transaction -> valueOrZero(transaction.getAmount()))
+            .sum();
+
+        if (outgoingTransactions.isEmpty() || outgoingTotal <= 0) {
+            return prediction(currentBalance, currentBalance, 0, threshold, false,
+                "There is not enough outgoing history to predict a low balance.",
+                List.of("No recent withdrawals or outgoing transfers were found"));
+        }
+
+        LocalDateTime earliestTransaction = outgoingTransactions.stream()
+            .map(Transaction::getCreatedAt)
+            .min(LocalDateTime::compareTo)
+            .orElse(LocalDateTime.now());
+        long observedDays = Math.max(1, ChronoUnit.DAYS.between(earliestTransaction, LocalDateTime.now()));
+        double dailyOutgoingRate = outgoingTotal / observedDays;
+        int estimatedDays = (int) Math.ceil((currentBalance - threshold) / dailyOutgoingRate);
+        double projectedBalance = Math.max(0, currentBalance - (dailyOutgoingRate * estimatedDays));
+        boolean warning = projectedBalance <= threshold;
+
+        return prediction(currentBalance, projectedBalance, estimatedDays, threshold, warning,
+            "Based on recent outgoing activity, your balance may fall below " + formatAmount(threshold)
+                + " within " + estimatedDays + " days.",
+            List.of(
+                "Average outgoing activity is " + formatAmount(dailyOutgoingRate) + " per day",
+                "The projection uses " + outgoingTransactions.size() + " outgoing transaction(s)"
+            ));
+        }
+
+        private LowBalancePredictionResponse prediction(
+            double currentBalance,
+            double projectedBalance,
+            int estimatedDays,
+            double threshold,
+            boolean warning,
+            String message,
+            List<String> reasons) {
+        return new LowBalancePredictionResponse(
+            warning, estimatedDays, currentBalance, projectedBalance, threshold, message, reasons);
+        }
+
+        private String formatAmount(double amount) {
+        return String.format("%.0f", amount);
+        }
 
     public MoneyHealthResponse getMoneyHealth(Long userId) {
     if (userId == null) {

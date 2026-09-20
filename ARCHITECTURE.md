@@ -95,7 +95,7 @@ Current controllers:
 - `UserController`: profile operations
 - `BankAccountController`: account creation, account lookup, deposits, withdrawals, transfers, and transaction history
 - `AdminController`: administrative users, accounts, statistics, account state changes, and daily limit resets
-- `InsightController`: authenticated read-only financial insight endpoints
+- `InsightController`: authenticated read-only Money Health and low-balance insight endpoints
 
 Controllers must not contain database queries or substantial business logic.
 
@@ -108,7 +108,7 @@ Services own business rules and transaction boundaries:
 - `TransactionService`: deposits, withdrawals, transfers, and transaction creation
 - `TransactionHistoryService`: transaction lookup and history operations
 - `AdminService`: administrative listings and system statistics
-- `AiInsightService`: calculates an explainable Money Health Score from the authenticated user's accounts and transactions without changing banking data
+- `AiInsightService`: calculates the live Money Health Score and low-balance prediction without changing banking data
 
 `MockDataSeeder` is an opt-in configuration under the `mock-data` Spring profile. It creates one repeatable local test user, account, and transaction history through repositories. It is disabled unless the profile is explicitly activated.
 
