@@ -2,6 +2,8 @@
 
 A full-stack banking app I built to learn Spring Boot and React. You can create accounts, deposit/withdraw money, and transfer funds between accounts!
 
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the system structure, feature boundaries, security rules, and the checklist for keeping the architecture updated as new features are added. See [instructions.md](instructions.md) for the required development workflow, commands, coding standards, and guardrails.
+
 ## What's Inside 📚
 
 **Core Features:**

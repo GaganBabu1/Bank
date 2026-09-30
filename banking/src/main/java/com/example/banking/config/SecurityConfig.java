@@ -4,6 +4,8 @@ import com.example.banking.security.JwtAuthenticationFilter;
 import com.example.banking.security.JwtTokenProvider;
 import com.example.banking.security.JwtAccessDeniedHandler;
 import com.example.banking.security.JwtAuthenticationEntryPoint;
+import com.example.banking.repository.UserRepository;
+import com.example.banking.entity.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,9 +32,28 @@ public class SecurityConfig {
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Autowired
+    private UserRepository userRepository;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public org.springframework.security.core.userdetails.UserDetailsService userDetailsService() {
+        return email -> userRepository.findByEmail(email)
+                .map(this::toUserDetails)
+                .orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException(email));
+    }
+
+    private org.springframework.security.core.userdetails.UserDetails toUserDetails(User user) {
+        return org.springframework.security.core.userdetails.User.withUsername(user.getEmail())
+                .password(user.getPassword())
+                .roles(user.getRole().name())
+                .disabled(!user.getEnabled())
+                .accountLocked(!user.getAccountNonLocked())
+                .build();
     }
 
     @Bean
@@ -65,6 +86,9 @@ public class SecurityConfig {
                         
                         // Admin endpoints
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // Insight endpoints
+                        .requestMatchers("/api/insights/**").hasAnyRole("USER", "ADMIN")
                         
                         // User endpoints
                         .requestMatchers("/api/user/**").hasAnyRole("USER", "ADMIN")

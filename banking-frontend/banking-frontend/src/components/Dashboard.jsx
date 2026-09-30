@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { accountAPI } from '../services/api';
+import { accountAPI, insightAPI } from '../services/api';
 import Loader from './Loader';
 
 const Dashboard = () => {
@@ -9,6 +9,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [accounts, setAccounts] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [moneyHealth, setMoneyHealth] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [stats, setStats] = useState({
@@ -17,13 +18,16 @@ const Dashboard = () => {
     recentTransactions: 0
   });
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+
+      try {
+        const insightResponse = await insightAPI.getMyFinancialHealth();
+        setMoneyHealth(insightResponse.data);
+      } catch {
+        console.log('Could not fetch money health insight');
+      }
       
       // Fetch user's accounts
       if (user?.id) {
@@ -55,7 +59,7 @@ const Dashboard = () => {
               5
             );
             setTransactions(transResponse.data.content || []);
-          } catch (err) {
+          } catch {
             console.log('Could not fetch transactions');
           }
         }
@@ -67,6 +71,10 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
   const handleAccountClick = (account) => {
     // TODO: Navigate to account details page
@@ -104,6 +112,30 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {moneyHealth && (
+        <div className="card" style={{ marginBottom: '2rem' }}>
+          <div className="card-header">
+            <h2>Money Health</h2>
+            <p>Explainable insight based on your current activity</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+            <div style={{ minWidth: '120px' }}>
+              <p style={{ margin: 0, fontSize: '2.5rem', fontWeight: '700', color: 'var(--primary)' }}>
+                {moneyHealth.score}/100
+              </p>
+              <p style={{ margin: '0.25rem 0 0', fontWeight: '700', color: 'var(--success)' }}>
+                {moneyHealth.status}
+              </p>
+            </div>
+            <ul style={{ margin: 0, paddingLeft: '1.25rem', color: 'var(--text-light)' }}>
+              {moneyHealth.reasons.map((reason) => (
+                <li key={reason} style={{ marginBottom: '0.35rem' }}>{reason}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="card" style={{ marginBottom: '2rem' }}>
